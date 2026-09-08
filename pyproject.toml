@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tikos-utils"
+version = "0.1.0"
+description = "Shared Pulumi ESC config resolver and pydantic settings base for internal Tikos Python services"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic-settings>=2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tikos_utils"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+ignore = [
+    "SIM117", # nested `with patch(...): with pytest.raises(...):` reads more clearly split out in tests
+    "B017",   # blind `pytest.raises(Exception)` used deliberately where only "it raises" matters
+]
