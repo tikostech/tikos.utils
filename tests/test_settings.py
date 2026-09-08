@@ -1,3 +1,4 @@
+import os
 from typing import ClassVar
 from unittest.mock import patch
 
@@ -120,6 +121,31 @@ def test_caching_only_opens_esc_once(monkeypatch, settings_cls):
         settings_cls.load()
         settings_cls.load()
     mock_open.assert_called_once()
+
+
+def test_esc_fallback_also_populates_os_environ(monkeypatch, settings_cls):
+    # Other code in the same process (legacy os.getenv call sites outside this Settings class)
+    # must also see ESC-fetched values, not just the returned Settings instance.
+    monkeypatch.delenv("FOO", raising=False)
+    monkeypatch.delenv("PORT", raising=False)
+    with patch(
+        "tikos_utils.settings.open_environment_variables",
+        return_value={"FOO": "from-esc", "PORT": "9090"},
+    ):
+        settings_cls.load()
+    assert os.environ["FOO"] == "from-esc"
+    assert os.environ["PORT"] == "9090"
+
+
+def test_esc_fallback_never_overwrites_real_env_in_os_environ(monkeypatch, settings_cls):
+    monkeypatch.delenv("FOO", raising=False)
+    monkeypatch.setenv("PORT", "1111")
+    with patch(
+        "tikos_utils.settings.open_environment_variables",
+        return_value={"FOO": "from-esc", "PORT": "9090"},
+    ):
+        settings_cls.load()
+    assert os.environ["PORT"] == "1111"  # real env value untouched
 
 
 def test_no_secret_values_in_error_text(monkeypatch, settings_cls):

@@ -52,6 +52,12 @@ class TikosBaseSettings(BaseSettings):
                     f"'{cls.esc_environment}': {', '.join(still_missing)}."
                 ) from exc2
 
+            # Also populate the real process environment (gaps only - never overwrite a var
+            # that's genuinely already set) so other code in the same process that reads
+            # os.environ directly, outside this Settings class, sees the same resolved values.
+            for key, value in esc_values.items():
+                os.environ.setdefault(key, value)
+
         cls._cache = instance
         return instance
 
