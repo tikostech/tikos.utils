@@ -5,7 +5,7 @@ Shared Pulumi ESC config resolver and pydantic settings base for internal Tikos 
 Install:
 
 ```
-tikos-utils @ git+https://github.com/tikostech/tikos.utils.git@v0.1.0
+tikos-utils @ git+https://github.com/tikostech/tikos.utils.git@v0.2.0
 ```
 
 Usage:
@@ -23,7 +23,13 @@ class Settings(TikosBaseSettings):
 settings = Settings.load()
 ```
 
-`Settings.load()` tries real process env + field defaults first — no Pulumi call at all if that
+`Settings.load()` first reads the working directory's `.env` (or the file `TIKOS_ENV_FILE` names;
+set it empty to turn this off) into the process environment, without overriding anything already
+set there, and logs the names it read, never the values. A value in `.env` therefore overrides
+ESC's, and a real environment variable overrides both, so you can point one service at another
+database, say, by putting its settings in that repo's gitignored `.env`.
+
+It then tries process env + field defaults — no Pulumi call at all if that
 already satisfies every required field (the common case once `docker compose` or a cloud
 deployment has already injected everything). Only if a required field is missing does it run
 `pulumi env open <esc_environment> environmentVariables --format json` once, merge the result in
