@@ -1,17 +1,25 @@
+import logging
 import os
+from pathlib import Path
 from typing import ClassVar
 
+from dotenv import dotenv_values
 from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .esc import EscOpenError, open_environment_variables
 
+ENV_FILE_VARIABLE = "TIKOS_ENV_FILE"
+
+logger = logging.getLogger(__name__)
+
 
 class TikosBaseSettings(BaseSettings):
     """Subclass this, declare `esc_environment` and required fields, then call `.load()`.
 
-    Precedence: explicit constructor/test override > real process env > Pulumi ESC > field
-    default.
+    Precedence: explicit constructor/test override > real process env > `.env` > Pulumi ESC >
+    field default. The `.env` is the working directory's, or the file `TIKOS_ENV_FILE` names; an
+    empty `TIKOS_ENV_FILE` turns it off.
     """
 
     model_config = SettingsConfigDict(extra="ignore")
@@ -25,6 +33,7 @@ class TikosBaseSettings(BaseSettings):
         if cls._cache is not None:
             return cls._cache
 
+        _apply_env_file()
         try:
             instance = cls()
         except ValidationError as exc:
@@ -59,3 +68,14 @@ class TikosBaseSettings(BaseSettings):
 
 def _missing_fields(exc: ValidationError) -> set[str]:
     return {str(err["loc"][0]) for err in exc.errors() if err["type"] == "missing"}
+
+
+def _apply_env_file() -> None:
+    path = os.environ.get(ENV_FILE_VARIABLE, ".env")
+    if not path or not Path(path).is_file():
+        return
+    values = {key: value for key, value in dotenv_values(path).items() if value is not None}
+    for key, value in values.items():
+        os.environ.setdefault(key, value)
+    if values:
+        logger.info("Settings from %s: %s", path, ", ".join(sorted(values)))
