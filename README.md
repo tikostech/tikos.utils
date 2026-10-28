@@ -5,7 +5,7 @@ Shared Pulumi ESC config resolver and pydantic settings base for internal Tikos 
 Install:
 
 ```
-tikos-utils @ git+https://github.com/tikostech/tikos.utils.git@v0.2.0
+tikos-utils @ git+https://github.com/tikostech/tikos.utils.git@v0.3.0
 ```
 
 Usage:
@@ -15,7 +15,7 @@ from typing import ClassVar
 from tikos_utils import TikosBaseSettings
 
 class Settings(TikosBaseSettings):
-    esc_environment: ClassVar[str] = "tikos-tech/local-dev/<your-service>"
+    esc_environment: ClassVar[str] = "tikos-tech/services/local#<your-service>"
 
     DATABASE_URL: str
     LOG_LEVEL: str = "INFO"  # a genuine code constant is fine to keep as a default
@@ -31,9 +31,16 @@ database, say, by putting its settings in that repo's gitignored `.env`.
 
 It then tries process env + field defaults — no Pulumi call at all if that
 already satisfies every required field (the common case once `docker compose` or a cloud
-deployment has already injected everything). Only if a required field is missing does it run
-`pulumi env open <esc_environment> environmentVariables --format json` once, merge the result in
-under real process env (env still wins over ESC), and retry. Requires the `pulumi` CLI installed
+deployment has already injected everything). Only if a required field is missing does it open the
+ESC address once with `pulumi env open`, merge the result in under real process env (env still
+wins over ESC), and retry.
+
+`esc_environment` is an ESC address:
+- `org/project/env`: that environment's `environmentVariables`;
+- `org/project/env#<block>`: one service's block of a shared environment, such as
+  `tikos-tech/services/local#tikos-api-server`. The service gets the environment's `shared` block's
+  `environmentVariables`, with its own block's `environmentVariables` on top. The compose stack's
+  ESC provider (tikos.infrastructure) applies the same rule. Requires the `pulumi` CLI installed
 and an active `pulumi login` session — it deliberately does not use `pulumi-esc-sdk`/
 `PULUMI_ACCESS_TOKEN`, since the SDK does not reuse an existing CLI login session (see
 `src/tikos_utils/esc.py` for why).
